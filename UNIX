@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define MAX_COMMAND_LENGTH 1024
+#define MAX_ARGUMENTS 64
+
+int main() {
+    char command[MAX_COMMAND_LENGTH];
+    char* arguments[MAX_ARGUMENTS];
+
+	while (1){
+		printf("$ ");
+      		fflush(stdout);
+
+if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL) {
+            break;
+        }
+
+        // Remove newline character from command
+        if (command[strlen(command) - 1] == '\n') {
+            command[strlen(command) - 1] = '\0';
+        }
+
+        // Tokenize command string into arguments
+        char* token = strtok(command, " ");
+        int i = 0;
+        while (token != NULL) {
+            arguments[i] = token;
+            i++;
+            token = strtok(NULL, " ");
+        }
+        arguments[i] = NULL;
+
+        // Create child process to execute command
+        pid_t pid = fork();
+        if (pid == -1) {
+            printf("Error: Fork failed\n");
+        } else if (pid == 0) {
+            execvp(arguments[0], arguments);
+            printf("Error: Command not found\n");
+            exit(1);
+        } else {
+            int status;
+            waitpid(pid, &status, 0);
+        }
+    }
+
+    return 0;
+}
+This program uses a loop to read user input from the command line using fgets. The input is then tokenized into an array of arguments using strtok. The fork function is used to create a child process to execute the command using execvp. If the command is not found, an error message is printed.
+
+Note that this is a very basic implementation and does not handle all possible errors or implement advanced features like shell scripting or piping.
+
+
+
+
+

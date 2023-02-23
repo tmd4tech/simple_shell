@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define MAX_COMMAND_LENGTH 1024
+#define MAX_ARGUMENTS 64
+
+void execute_command(char* command, char* path);
+
+int main() {
+    char* path = getenv("PATH");
+
+    while (1) {
+        printf("$ ");
+        fflush(stdout);
+
+        char command[MAX_COMMAND_LENGTH];
+        if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL) {
+            break;
+        }
+
+        if (command[strlen(command) - 1] == '\n') {
+            command[strlen(command) - 1] = '\0';
+        }
+
+        execute_command(command, path);
+    }
+
+    return 0;
+}
+
+void execute_command(char* command, char* path) {
+    char* arguments[MAX_ARGUMENTS];
+
+    char* token = strtok(command, " ");
+    int i = 0;
+    while (token != NULL) {
+        arguments[i] = token;
+        i++;
+        token = strtok(NULL, " ");
+    }
+    arguments[i] = NULL;
+
+    char command_path[MAX_COMMAND_LENGTH];
+    if (strchr(arguments[0], '/') != NULL) {
+        // The command contains a slash, so it's already a path
+        strcpy(command_path, arguments[0]);
+    } else {
+        // The command does not contain a slash, so we need to search the PATH
+        char* path_token = strtok(path, ":");
+        while (path_token != NULL) {
+            snprintf(command_path, MAX_COMMAND_LENGTH, "%s/%s", path_token, arguments[0]);
+            if (access(command_path, X_OK) == 0) {
+                break;
+            }
+            path_token = strtok(NULL, ":");
+        }
+    }
+
+    if (access(command_path, X_OK) != 0) {
+        printf("Error: Command not found\n");
+        return;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        printf("Error: Fork failed\n");
+    } else if (pid == 0) {
+        execv(command_path, arguments);
+        printf("Error: Command failed\n");
+        exit(1);
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+    }
+}
+
